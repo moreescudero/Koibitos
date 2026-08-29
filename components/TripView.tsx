@@ -66,7 +66,7 @@ export function TripView({
                 (a, b) => a.created_at.localeCompare(b.created_at),
               );
             });
-            if (row.sender === "claude") setWaiting(false);
+            if (row.sender === "gemini") setWaiting(false);
           }
         },
       )
@@ -124,7 +124,7 @@ export function TripView({
           {
             id: `temp-err-${Date.now()}`,
             trip_id: tripId,
-            sender: "claude",
+            sender: "gemini",
             content: `No pude enviar el mensaje (${(e as Error).message}).`,
             created_at: new Date().toISOString(),
           },

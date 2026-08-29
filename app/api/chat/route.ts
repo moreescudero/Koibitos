@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type Anthropic from "@anthropic-ai/sdk";
+import type { Content, Part } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getAnthropic, MODEL, tools, systemPrompt } from "@/lib/anthropic";
+import { getGemini, MODEL, functionDeclarations, systemPrompt } from "@/lib/gemini";
 import { executeTool } from "@/lib/tools";
 import { buildContext } from "@/lib/context";
 import { isAllowed, senderForEmail } from "@/lib/allowed";
@@ -71,67 +71,81 @@ export async function POST(req: NextRequest) {
   const context = buildContext(itemsRes.data ?? [], legsRes.data ?? []);
 
   const history = (historyRes.data ?? []).slice().reverse();
-  const messages: Anthropic.MessageParam[] = [];
+  const contents: Content[] = [];
   for (const m of history) {
-    if (m.sender === "claude") {
-      messages.push({ role: "assistant", content: m.content });
+    const role = m.sender === "gemini" ? "model" : "user";
+    const text = m.sender === "gemini" ? m.content : `[${m.sender}] ${m.content}`;
+    const last = contents[contents.length - 1];
+    // Gemini exige alternar user/model: fusionar turnos consecutivos del mismo rol.
+    if (last && last.role === role) {
+      last.parts!.push({ text });
     } else {
-      messages.push({ role: "user", content: `[${m.sender}] ${m.content}` });
+      contents.push({ role, parts: [{ text }] });
     }
   }
-  // La primera entrada tiene que ser 'user'.
-  while (messages.length && messages[0].role !== "user") messages.shift();
-  if (messages.length === 0) {
-    messages.push({ role: "user", content: `[${sender}] ${message}` });
+  // La primera entrada tiene que ser del usuario.
+  while (contents.length && contents[0].role !== "user") contents.shift();
+  if (contents.length === 0) {
+    contents.push({ role: "user", parts: [{ text: `[${sender}] ${message}` }] });
   }
 
-  // --- 3-4. Loop de tool use ---
-  const anthropic = getAnthropic();
+  // --- 3-4. Loop de function calling ---
+  const ai = getGemini();
   let finalText = "";
   try {
     for (let i = 0; i < MAX_ITERS; i++) {
-      const res = await anthropic.messages.create({
+      const res = await ai.models.generateContent({
         model: MODEL,
-        max_tokens: 4096,
-        system: systemPrompt(context),
-        tools,
-        messages,
+        contents,
+        config: {
+          systemInstruction: systemPrompt(context),
+          tools: [{ functionDeclarations }],
+          // Sin "thinking": más rápido y no gasta cuota extra del free tier.
+          // Subir a un budget > 0 si se quiere mejor razonamiento en los tools.
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       });
 
-      const text = res.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
+      const text = res.text?.trim();
       if (text) finalText = text;
 
-      const toolUses = res.content.filter(
-        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
-      );
-      if (res.stop_reason !== "tool_use" || toolUses.length === 0) break;
+      const calls = res.functionCalls ?? [];
+      if (calls.length === 0) break;
 
-      messages.push({ role: "assistant", content: res.content });
-
-      const results: Anthropic.ToolResultBlockParam[] = [];
-      for (const tu of toolUses) {
-        const out = await executeTool(db, tripId, tu.name, tu.input);
-        results.push({ type: "tool_result", tool_use_id: tu.id, content: out });
+      // Turno del modelo con las function calls, tal cual vino.
+      const modelContent = res.candidates?.[0]?.content;
+      if (modelContent) {
+        contents.push(modelContent);
+      } else {
+        contents.push({
+          role: "model",
+          parts: calls.map((c) => ({ functionCall: c })),
+        });
       }
-      messages.push({ role: "user", content: results });
+
+      // Ejecutar cada función y devolver los resultados.
+      const parts: Part[] = [];
+      for (const call of calls) {
+        const out = await executeTool(db, tripId, call.name ?? "", call.args ?? {});
+        parts.push({
+          functionResponse: { name: call.name ?? "", response: { result: out } },
+        });
+      }
+      contents.push({ role: "user", parts });
     }
   } catch (e) {
-    console.error("[/api/chat] error de Anthropic:", e);
+    console.error("[/api/chat] error de Gemini:", e);
     finalText = "Uy, tuve un problema para procesar eso. ¿Lo intentás de nuevo?";
   }
 
   if (!finalText) finalText = "Listo.";
 
-  // --- 5. Guardar la respuesta de Claude (dispara Realtime) ---
-  const { error: claudeErr } = await db
+  // --- 5. Guardar la respuesta del asistente (dispara Realtime) ---
+  const { error: botErr } = await db
     .from("messages")
-    .insert({ trip_id: tripId, sender: "claude", content: finalText });
-  if (claudeErr) {
-    return NextResponse.json({ error: claudeErr.message }, { status: 500 });
+    .insert({ trip_id: tripId, sender: "gemini", content: finalText });
+  if (botErr) {
+    return NextResponse.json({ error: botErr.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

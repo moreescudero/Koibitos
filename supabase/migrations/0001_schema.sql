@@ -13,7 +13,7 @@ create table if not exists trips (
 create table if not exists messages (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid references trips(id) on delete cascade,
-  sender text not null check (sender in ('morena', 'novio', 'claude')),
+  sender text not null check (sender in ('morena', 'novio', 'gemini')),
   content text not null,
   created_at timestamptz default now()
 );

@@ -100,7 +100,7 @@ export function buildRouteLegs(raw: unknown): BuiltRouteLeg[] {
 
 /**
  * Ejecuta un tool_use contra Supabase (cliente con service role) y devuelve un
- * texto de resultado para mandarle de vuelta a Claude como tool_result.
+ * texto de resultado para mandarle de vuelta al modelo como functionResponse.
  * Nunca tira: los errores vuelven como string.
  */
 export async function executeTool(

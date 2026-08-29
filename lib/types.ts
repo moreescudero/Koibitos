@@ -1,6 +1,6 @@
 // Tipos compartidos entre server, API routes y componentes.
 
-export type Sender = "morena" | "novio" | "claude";
+export type Sender = "morena" | "novio" | "gemini";
 
 export type Category = "must_visit" | "shopping" | "food" | "note";
 

@@ -1,25 +1,29 @@
 # Koibitos — chat + itinerario colaborativo (viaje a Japón)
 
-Morena y su novio chatean en un espacio compartido y un panel de itinerario se
-arma y actualiza solo, en tiempo real, para los dos. El chat pasa por Claude
-(`claude-sonnet-5`) con **tool use**: cuando aparece un lugar / comida / compra /
-idea, Claude lo guarda en la base y el panel se actualiza por Realtime.
+Morena y Augusto chatean en un espacio compartido y un panel de itinerario se
+arma y actualiza solo, en tiempo real, para los dos. El chat pasa por Gemini
+(`gemini-2.5-flash`) con **function calling**: cuando aparece un lugar / comida /
+compra / idea, el modelo lo guarda en la base y el panel se actualiza por Realtime.
+
+Todo el stack corre en free tier: **Vercel + Supabase + Gemini API** (esta última
+sin tarjeta). Nota: en el free tier de Gemini, Google puede usar los mensajes para
+mejorar sus modelos.
 
 ## Stack
 
 - **Next.js 16** (App Router) + React + TypeScript + Tailwind v4
 - **Supabase** (Postgres): base, Realtime, auth con magic link
-- **Anthropic API** (`claude-sonnet-5`) con function calling
+- **Gemini API** (`gemini-2.5-flash`) con function calling
 - Deploy: **Vercel** (frontend + API routes) + Supabase hosteado
 
 ## Cómo corre el flujo
 
 1. Alguien escribe en el chat → `POST /api/chat`.
 2. La API route inserta el mensaje en `messages` (Realtime lo muestra en ambas pantallas).
-3. Arma contexto (historial + itinerario + ruta actual) y llama a Claude con 3 tools.
-4. Si Claude usa un tool, la API route ejecuta el insert/update/delete en Supabase
-   (loop de hasta 5 iteraciones) y le devuelve el resultado.
-5. La respuesta final de Claude se guarda como `sender: 'claude'`.
+3. Arma contexto (historial + itinerario + ruta actual) y llama a Gemini con 3 funciones.
+4. Si Gemini devuelve una `functionCall`, la API route ejecuta el insert/update/delete
+   en Supabase (loop de hasta 5 iteraciones) y le devuelve el resultado.
+5. La respuesta final de Gemini se guarda como `sender: 'gemini'`.
 6. Todos los cambios llegan solos a los dos clientes por Realtime.
 
 Los tiempos de viaje entre ciudades salen de una tabla estática
@@ -65,17 +69,17 @@ En **Authentication → URL Configuration**:
 No hace falta configurar SMTP para probar: Supabase manda el mail con su
 remitente por defecto (con rate limit).
 
-### 4. Anthropic
+### 4. Gemini
 
-Crear una API key en [console.anthropic.com](https://console.anthropic.com) con
-crédito disponible.
+Sacar una API key gratis en [aistudio.google.com](https://aistudio.google.com)
+(botón "Get API key", sin tarjeta).
 
 ### 5. Variables de entorno
 
 Copiar `.env.example` a `.env.local` y completar:
 
 ```
-ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
@@ -111,7 +115,7 @@ Abrir <http://localhost:3000>, ingresar cada mail, abrir el link mágico del mai
 
 ```
 app/
-  api/chat/route.ts        API route: mensaje -> Claude -> tools -> Supabase
+  api/chat/route.ts        API route: mensaje -> Gemini -> funciones -> Supabase
   auth/callback/route.ts   callback del magic link
   login/page.tsx           form de magic link
   trip/[tripId]/page.tsx   carga inicial (server) + render de TripView
@@ -121,13 +125,13 @@ components/
   ItineraryPanel.tsx       agrupado por ciudad segun el orden de la ruta
 lib/
   supabase/{client,server,service}.ts
-  anthropic.ts             cliente + definición de los 3 tools + system prompt
-  tools.ts                 ejecutores de los tools contra Supabase
+  gemini.ts                cliente + declaración de las 3 funciones + system prompt
+  tools.ts                 ejecutores de las funciones contra Supabase
   routes.ts                tabla estática de tiempos de viaje (TODO: verificar)
   context.ts               serializa el estado del viaje para el system prompt
   allowed.ts               mails permitidos + mapeo mail -> remitente
 supabase/migrations/       0001 schema, 0002 realtime, 0003 rls, 0004 seed
-middleware.ts              refresca sesión + protege todo salvo /login y /auth
+proxy.ts                   refresca sesión + protege todo salvo /login y /auth
 ```
 
 ## Tests
@@ -137,5 +141,5 @@ npm test
 ```
 
 Cubren la tabla de rutas (`lib/routes.test.ts`) y la validación de inputs de los
-tools (`lib/tools.test.ts`). El flujo Realtime + Anthropic se prueba a mano una
+funciones (`lib/tools.test.ts`). El flujo Realtime + Gemini se prueba a mano una
 vez que Supabase y la API key están configurados.

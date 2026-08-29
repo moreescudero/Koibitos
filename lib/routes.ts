@@ -2,8 +2,8 @@
 //
 // IMPORTANTE: estos números son ESTIMACIONES de referencia, no datos definitivos.
 // TODO: verificar cada valor en Google Maps / Navitime / Hyperdia antes de confiar
-// en él para armar horarios reales. Claude nunca inventa estas horas: siempre salen
-// de acá.
+// en él para armar horarios reales. El modelo nunca inventa estas horas: siempre
+// salen de acá.
 
 export const CITIES = [
   "Tokio",

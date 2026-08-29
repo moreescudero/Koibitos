@@ -12,8 +12,8 @@ interface Props {
 
 const NAME: Record<Sender, string> = {
   morena: "Morena",
-  novio: "Novio",
-  claude: "Claude",
+  novio: "Augusto",
+  gemini: "Gemini",
 };
 
 export function ChatPanel({ messages, me, waiting, onSend }: Props) {
@@ -45,7 +45,7 @@ export function ChatPanel({ messages, me, waiting, onSend }: Props) {
         )}
         {messages.map((m) => {
           const mine = m.sender === me;
-          const isClaude = m.sender === "claude";
+          const isBot = m.sender === "gemini";
           return (
             <div
               key={m.id}
@@ -56,7 +56,7 @@ export function ChatPanel({ messages, me, waiting, onSend }: Props) {
               </span>
               <div
                 className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
-                  isClaude
+                  isBot
                     ? "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100"
                     : mine
                       ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
@@ -71,7 +71,7 @@ export function ChatPanel({ messages, me, waiting, onSend }: Props) {
         {waiting && (
           <div className="flex items-start">
             <div className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-200">
-              Claude está pensando…
+              Gemini está pensando…
             </div>
           </div>
         )}

@@ -1,39 +1,41 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI, Type, type FunctionDeclaration } from "@google/genai";
 
-// Modelo elegido en el spec: barato, contexto de 1M, tool use predecible.
-export const MODEL = "claude-sonnet-5";
+// Modelo del spec: gratis en el free tier de aistudio.google.com, con function calling.
+export const MODEL = "gemini-2.5-flash";
 
-let _client: Anthropic | null = null;
+let _client: GoogleGenAI | null = null;
 
-/** Cliente Anthropic (lazy: no se crea en build time). Toma ANTHROPIC_API_KEY del entorno. */
-export function getAnthropic(): Anthropic {
-  if (!_client) _client = new Anthropic();
+/** Cliente Gemini (lazy: no se crea en build time). Toma GEMINI_API_KEY del entorno. */
+export function getGemini(): GoogleGenAI {
+  if (!_client) {
+    _client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  }
   return _client;
 }
 
 /**
- * Definición de los 3 tools de function calling. Los esquemas coinciden con el
- * spec. La ejecución real (insert/update/delete en Supabase) vive en lib/tools.ts.
+ * Declaraciones de las 3 funciones (function calling). Los esquemas coinciden con
+ * el spec. La ejecución real (insert/update/delete en Supabase) vive en lib/tools.ts.
  */
-export const tools: Anthropic.Tool[] = [
+export const functionDeclarations: FunctionDeclaration[] = [
   {
     name: "add_itinerary_item",
     description:
       "Agrega un lugar imprescindible, una compra, una comida o una nota al itinerario del viaje.",
-    input_schema: {
-      type: "object",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
         city: {
-          type: "string",
+          type: Type.STRING,
           description: "Ciudad a la que pertenece el item, ej. Tokio, Kioto, Osaka.",
         },
         category: {
-          type: "string",
+          type: Type.STRING,
           enum: ["must_visit", "shopping", "food", "note"],
         },
-        title: { type: "string", description: "Título corto del item." },
+        title: { type: Type.STRING, description: "Título corto del item." },
         description: {
-          type: "string",
+          type: Type.STRING,
           description: "Detalle opcional (por qué ir, qué comprar, horarios, etc.).",
         },
       },
@@ -44,11 +46,11 @@ export const tools: Anthropic.Tool[] = [
     name: "remove_itinerary_item",
     description:
       "Elimina un item del itinerario. Acepta el id (uuid) exacto o un título aproximado.",
-    input_schema: {
-      type: "object",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
         item_id: {
-          type: "string",
+          type: Type.STRING,
           description: "uuid del item, o su título aproximado si no se conoce el id.",
         },
       },
@@ -61,17 +63,17 @@ export const tools: Anthropic.Tool[] = [
       "Define o reordena las ciudades del recorrido y los días asignados a cada una. " +
       "Reemplaza el recorrido completo por la lista que se pasa. No incluir horas de " +
       "viaje entre ciudades: el sistema las agrega con datos reales.",
-    input_schema: {
-      type: "object",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
         legs: {
-          type: "array",
+          type: Type.ARRAY,
           items: {
-            type: "object",
+            type: Type.OBJECT,
             properties: {
-              city: { type: "string" },
-              days_allocated: { type: "integer" },
-              notes: { type: "string" },
+              city: { type: Type.STRING },
+              days_allocated: { type: Type.INTEGER },
+              notes: { type: Type.STRING },
             },
             required: ["city", "days_allocated"],
           },
@@ -82,9 +84,9 @@ export const tools: Anthropic.Tool[] = [
   },
 ];
 
-/** System prompt. `context` es el snapshot serializado del itinerario y la ruta. */
+/** System instruction. `context` es el snapshot serializado del itinerario y la ruta. */
 export function systemPrompt(context: string): string {
-  return `Sos el asistente de planificación de un viaje a Japón que hacen Morena y su novio.
+  return `Sos el asistente de planificación de un viaje a Japón que hacen Morena y Augusto.
 Chatean con vos en un espacio compartido y vos mantenés actualizado un panel de itinerario en vivo.
 
 Cómo trabajás:
