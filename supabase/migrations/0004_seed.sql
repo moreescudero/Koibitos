@@ -2,7 +2,7 @@
 -- NEXT_PUBLIC_TRIP_ID. Cambialo si querés, pero que coincida con el .env.
 
 insert into trips (id, name)
-values ('11111111-1111-1111-1111-111111111111', 'Japón — Morena & Novio')
+values ('11111111-1111-1111-1111-111111111111', 'Japón — Morena & Augusto')
 on conflict (id) do nothing;
 
 -- Recorrido base (Tokio -> Fujiyoshida -> Hakone -> Takayama -> Shirakawa-go -> Kioto -> Osaka).

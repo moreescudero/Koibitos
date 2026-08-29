@@ -50,8 +50,7 @@ npm install
    (función `is_trip_member`). Tienen que ser los mails reales de ustedes dos.
 4. En **SQL Editor**, correr las 4 migraciones en orden:
    - `supabase/migrations/0001_schema.sql`
-   - `supabase/migrations/0002_realtime.sql` (si alguna tabla ya estaba en la
-     publicación, ignorá el error de esa línea)
+   - `supabase/migrations/0002_realtime.sql`
    - `supabase/migrations/0003_rls.sql`
    - `supabase/migrations/0004_seed.sql`
 
