@@ -1,7 +1,9 @@
 import { GoogleGenAI, Type, type FunctionDeclaration } from "@google/genai";
 
-// Modelo del spec: gratis en el free tier de aistudio.google.com, con function calling.
-export const MODEL = "gemini-2.5-flash";
+// Alias que siempre apunta al Flash gratis vigente (hoy resuelve a gemini-3.7-flash).
+// Usamos el alias en vez de una versión fija para que no se rompa cuando Google
+// retira modelos viejos (que fue justo lo que pasó con gemini-2.5-flash).
+export const MODEL = "gemini-flash-latest";
 
 let _client: GoogleGenAI | null = null;
 

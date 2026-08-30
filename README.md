@@ -2,7 +2,7 @@
 
 Morena y Augusto chatean en un espacio compartido y un panel de itinerario se
 arma y actualiza solo, en tiempo real, para los dos. El chat pasa por Gemini
-(`gemini-2.5-flash`) con **function calling**: cuando aparece un lugar / comida /
+(`gemini-flash-latest`) con **function calling**: cuando aparece un lugar / comida /
 compra / idea, el modelo lo guarda en la base y el panel se actualiza por Realtime.
 
 Todo el stack corre en free tier: **Vercel + Supabase + Gemini API** (esta última
@@ -13,7 +13,7 @@ mejorar sus modelos.
 
 - **Next.js 16** (App Router) + React + TypeScript + Tailwind v4
 - **Supabase** (Postgres): base, Realtime, auth con magic link
-- **Gemini API** (`gemini-2.5-flash`) con function calling
+- **Gemini API** (`gemini-flash-latest`) con function calling
 - Deploy: **Vercel** (frontend + API routes) + Supabase hosteado
 
 ## Cómo corre el flujo

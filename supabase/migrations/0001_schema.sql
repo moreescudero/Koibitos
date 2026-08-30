@@ -41,3 +41,13 @@ create table if not exists route_legs (
 create index if not exists messages_trip_created_idx on messages (trip_id, created_at);
 create index if not exists itinerary_items_trip_idx on itinerary_items (trip_id, created_at);
 create index if not exists route_legs_trip_order_idx on route_legs (trip_id, order_index);
+
+-- Permisos de tabla para los roles de Supabase. RLS (0003) filtra las FILAS, pero
+-- el rol necesita primero el GRANT sobre la tabla. Si las tablas se crean fuera del
+-- dashboard (ej. `supabase db query --linked`), este GRANT no se aplica solo.
+grant select, insert, update, delete
+  on table trips, messages, itinerary_items, route_legs
+  to authenticated, service_role;
+
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated, service_role;
